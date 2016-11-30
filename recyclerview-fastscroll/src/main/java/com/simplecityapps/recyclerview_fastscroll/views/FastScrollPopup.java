@@ -51,6 +51,7 @@ public class FastScrollPopup {
 
     private Paint mTextPaint;
     private Rect mTextBounds = new Rect();
+    private float mTextHeight;
 
     private float mAlpha = 1;
 
@@ -139,7 +140,6 @@ public class FastScrollPopup {
             if (Utils.isRtl(mRes)) {
                 radii = new float[]{mCornerRadius, mCornerRadius, mCornerRadius, mCornerRadius, mCornerRadius, mCornerRadius, 0, 0};
             } else {
-
                 radii = new float[]{mCornerRadius, mCornerRadius, mCornerRadius, mCornerRadius, 0, 0, mCornerRadius, mCornerRadius};
             }
 
@@ -148,9 +148,16 @@ public class FastScrollPopup {
             mBackgroundPaint.setAlpha((int) (mAlpha * 255));
             mTextPaint.setAlpha((int) (mAlpha * 255));
             canvas.drawPath(mBackgroundPath, mBackgroundPaint);
-            canvas.drawText(mSectionName, (mBgBounds.width() - mTextBounds.width()) / 2,
-                    mBgBounds.height() - (mBgBounds.height() - mTextBounds.height()) / 2,
-                    mTextPaint);
+
+            if (mSectionName.charAt(0) > 255) {
+                canvas.drawText(mSectionName, (mBgBounds.width() - mTextBounds.width()) / 2,
+                        (mBgBounds.height() - mTextHeight) / 2, mTextPaint);
+            } else {
+                canvas.drawText(mSectionName, (mBgBounds.width() - mTextBounds.width()) / 2,
+                        mBgBounds.height() - (mBgBounds.height() - mTextBounds.height()) / 2,
+                        mTextPaint);
+            }
+
             canvas.restoreToCount(restoreCount);
         }
     }
@@ -161,6 +168,9 @@ public class FastScrollPopup {
             mTextPaint.getTextBounds(sectionName, 0, sectionName.length(), mTextBounds);
             // Update the width to use measureText since that is more accurate
             mTextBounds.right = (int) (mTextBounds.left + mTextPaint.measureText(sectionName));
+
+            Paint.FontMetricsInt fontMetrics = mTextPaint.getFontMetricsInt();
+            mTextHeight = fontMetrics.bottom + fontMetrics.top;
         }
     }
 
