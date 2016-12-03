@@ -21,6 +21,7 @@ import android.graphics.Canvas;
 import android.graphics.Typeface;
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
+import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -158,9 +159,65 @@ public class FastScrollRecyclerView extends RecyclerView implements RecyclerView
 
     @Override
     public void draw(Canvas c) {
+        super.draw(c);
         onUpdateScrollbar();
         mScrollbar.draw(c);
-        super.draw(c);
+
+        final int count = mItemDecorations.size();
+        for (int i = 0; i < count; i++) {
+            mItemDecorations.get(i).onDrawOver(c, this, mState);
+        }
+        // TODO If padding is not 0 and clipChildrenToPadding is false, to draw glows properly, we
+        // need find children closest to edges. Not sure if it is worth the effort.
+        boolean needsInvalidate = false;
+        if (mLeftGlow != null && !mLeftGlow.isFinished()) {
+            final int restore = c.save();
+            final int padding = mClipToPadding ? getPaddingBottom() : 0;
+            c.rotate(270);
+            c.translate(-getHeight() + padding, 0);
+            needsInvalidate = mLeftGlow != null && mLeftGlow.draw(c);
+            c.restoreToCount(restore);
+        }
+        if (mTopGlow != null && !mTopGlow.isFinished()) {
+            final int restore = c.save();
+            if (mClipToPadding) {
+                c.translate(getPaddingLeft(), getPaddingTop());
+            }
+            needsInvalidate |= mTopGlow != null && mTopGlow.draw(c);
+            c.restoreToCount(restore);
+        }
+        if (mRightGlow != null && !mRightGlow.isFinished()) {
+            final int restore = c.save();
+            final int width = getWidth();
+            final int padding = mClipToPadding ? getPaddingTop() : 0;
+            c.rotate(90);
+            c.translate(-padding, -width);
+            needsInvalidate |= mRightGlow != null && mRightGlow.draw(c);
+            c.restoreToCount(restore);
+        }
+        if (mBottomGlow != null && !mBottomGlow.isFinished()) {
+            final int restore = c.save();
+            c.rotate(180);
+            if (mClipToPadding) {
+                c.translate(-getWidth() + getPaddingRight(), -getHeight() + getPaddingBottom());
+            } else {
+                c.translate(-getWidth(), -getHeight());
+            }
+            needsInvalidate |= mBottomGlow != null && mBottomGlow.draw(c);
+            c.restoreToCount(restore);
+        }
+
+        // If some views are animating, ItemDecorators are likely to move/change with them.
+        // Invalidate RecyclerView to re-draw decorators. This is still efficient because children's
+        // display lists are not invalidated.
+        if (!needsInvalidate && mItemAnimator != null && mItemDecorations.size() > 0 &&
+                mItemAnimator.isRunning()) {
+            needsInvalidate = true;
+        }
+
+        if (needsInvalidate) {
+            ViewCompat.postInvalidateOnAnimation(this);
+        }
     }
 
     /**
